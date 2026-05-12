@@ -109,16 +109,21 @@ function renderSingleEntity(
 ) {
     currentIds.add(entity.id);
     Cartesian3.fromDegrees(entity.longitude, entity.latitude, entity.altitude || 0, Ellipsoid.WGS84, scratchPosition);
-    
-    // Auto-upgrade missing icons to SVG Billboards so pixelOffsets (spiderifier) will work
-    const effectiveOptions = { ...options };
-    const baseColor = getEntityColor(effectiveOptions);
-    if (!effectiveOptions.iconUrl && effectiveOptions.type !== "model") {
+
+    const baseColor = getEntityColor(options);
+
+    // Auto-upgrade missing icons to SVG Billboards so pixelOffsets (spiderifier) will work.
+    // Only clone when the auto-SVG branch actually mutates — otherwise pass `options` through.
+    let effectiveOptions: CesiumEntityOptions = options;
+    if (!options.iconUrl && options.type !== "model") {
         const baseOutlineColor = getCachedColor(options.outlineColor) || Color.BLACK;
         const outWidth = options.outlineWidth || 1;
         const pSize = options.size || (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches ? 12 : 8);
-        effectiveOptions.iconUrl = getDefaultDotIcon(baseColor, baseOutlineColor, outWidth, pSize);
-        effectiveOptions.iconScale = 1.0;
+        effectiveOptions = {
+            ...options,
+            iconUrl: getDefaultDotIcon(baseColor, baseOutlineColor, outWidth, pSize),
+            iconScale: 1.0,
+        };
         (effectiveOptions as any)._isAutoSVG = true;
     }
     
