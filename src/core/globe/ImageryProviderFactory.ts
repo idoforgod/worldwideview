@@ -1,7 +1,7 @@
 import {
     BingMapsImageryProvider,
+    Ion,
     IonImageryProvider,
-    OpenStreetMapImageryProvider,
     ArcGisMapServerImageryProvider,
     UrlTemplateImageryProvider,
     BingMapsStyle,
@@ -60,6 +60,21 @@ export const IMAGERY_LAYERS: ImageryLayerEntry[] = [
     }
 ];
 
+export function createOsmProvider() {
+    return new UrlTemplateImageryProvider({
+        url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        subdomains: ["a", "b", "c"]
+    });
+}
+
+async function ionOrOsmFallback(assetId: number) {
+    if (!Ion.defaultAccessToken) {
+        console.warn(`[ImageryProvider] No Cesium Ion token — falling back to OSM`);
+        return createOsmProvider();
+    }
+    return await IonImageryProvider.fromAssetId(assetId);
+}
+
 export async function createImageryProvider(layerId: string) {
     const bingKey = process.env.NEXT_PUBLIC_BING_MAPS_KEY;
 
@@ -71,7 +86,7 @@ export async function createImageryProvider(layerId: string) {
                     mapStyle: BingMapsStyle.AERIAL,
                 });
             }
-            return await IonImageryProvider.fromAssetId(2);
+            return await ionOrOsmFallback(2);
 
         case "bing-labels":
             if (bingKey) {
@@ -80,7 +95,7 @@ export async function createImageryProvider(layerId: string) {
                     mapStyle: BingMapsStyle.AERIAL_WITH_LABELS,
                 });
             }
-            return await IonImageryProvider.fromAssetId(3);
+            return await ionOrOsmFallback(3);
 
         case "bing-road":
             if (bingKey) {
@@ -89,13 +104,10 @@ export async function createImageryProvider(layerId: string) {
                     mapStyle: BingMapsStyle.ROAD,
                 });
             }
-            return await IonImageryProvider.fromAssetId(4);
+            return await ionOrOsmFallback(4);
 
         case "osm":
-            return new UrlTemplateImageryProvider({
-                url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                subdomains: ["a", "b", "c"]
-            });
+            return createOsmProvider();
 
         case "arcgis-world":
             return await ArcGisMapServerImageryProvider.fromUrl(
@@ -103,12 +115,9 @@ export async function createImageryProvider(layerId: string) {
             );
 
         case "blue-marble":
-            return await IonImageryProvider.fromAssetId(3845);
+            return await ionOrOsmFallback(3845);
 
         default:
-            return new UrlTemplateImageryProvider({
-                url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                subdomains: ["a", "b", "c"]
-            });
+            return createOsmProvider();
     }
 }
