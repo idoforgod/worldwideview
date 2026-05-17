@@ -93,6 +93,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-import { withSentryConfig } from "@sentry/nextjs";
-
 export default nextConfig;
