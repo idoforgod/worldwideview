@@ -1,0 +1,50 @@
+node_modules
+**/node_modules
+**/dist
+**/.next
+.git
+
+# Database files at ANY depth
+/data
+packages/*/data
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/*-journal
+**/*.db-wal
+**/*.db-shm
+
+# ============================================================
+# UNIGNORE FOR AI AGENT (FILTERED PATHS ONLY)
+# ============================================================
+
+# Code Frameworks, Configurations & Typings
+!/out/
+!*.tsbuildinfo
+!next-env.d.ts
+!/build
+!*.code-workspace
+
+# Generated Codebase Assets & Database Schemas (e.g., Prisma Client)
+!/src/generated/
+
+# Permanent Local Automation and Scripts Shared in Project
+!/local-scripts/
+!/public/plugins-local/
+
+# Local Structural Repositories & Workspaces
+!local-plugins/*
+!/worldmonitor/
+!local-seeders/*
+
+# Complete Ecosystem Repositories (Allows Agent to Cross-Reference Layouts)
+!/packages/wwv-data-engine/
+!/worldwideview-marketplace/
+!/worldwideview-plugins/
+!/worldwideview-web/
+!/wwv-data-engine/
+!/wwv-data-engine-public/
+!/wwv-seeders/
+!/wwv-seeders-private/
+!/wwv-test/
+!worldwideview.code-workspace
