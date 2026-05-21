@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { encryptCredential, decryptCredential } from "./encryption";
 
 describe("AES-256-GCM Encryption with PBKDF2", () => {
+    beforeAll(() => { process.env.ENCRYPTION_MASTER_KEY = "test-master-key-32-chars-padding!!"; });
+    afterAll(() => { delete process.env.ENCRYPTION_MASTER_KEY; });
     it("should correctly encrypt and decrypt a string", async () => {
         const secret = "my-super-secret-api-key";
 

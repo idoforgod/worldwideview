@@ -22,7 +22,31 @@ interface FetchOptions extends RequestInit {
     timeout?: number;
 }
 
+function checkHostAllowlist(hostname: string): void {
+    const raw = process.env.PROXY_HOST_ALLOWLIST ?? "";
+    const allowlist = raw.trim();
+
+    if (allowlist === "*") {
+        console.warn(`[SSRF] PROXY_HOST_ALLOWLIST="*" — permissive mode, host: ${hostname}. Populate the list from WARN logs then tighten.`);
+        return;
+    }
+
+    if (!allowlist) {
+        throw new Error(`SSRF Error: PROXY_HOST_ALLOWLIST is not configured. Set to "*" to allow all (permissive) or a comma-separated host list.`);
+    }
+
+    const allowed = allowlist.split(",").map((h) => h.trim()).filter(Boolean);
+    if (!allowed.includes(hostname)) {
+        throw new Error(`SSRF Error: Host "${hostname}" is not in PROXY_HOST_ALLOWLIST.`);
+    }
+}
+
 export async function safeFetch(urlStr: string, options: FetchOptions = {}): Promise<Response> {
+    const hostForCheck = (() => {
+        try { return new URL(urlStr).hostname; } catch { return ""; }
+    })();
+    checkHostAllowlist(hostForCheck);
+
     if (!validateOrigin(urlStr)) {
         throw new Error("SSRF Error: Invalid protocol. Only HTTPS is allowed.");
     }

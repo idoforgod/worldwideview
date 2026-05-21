@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { issueMarketplaceToken } from "@/lib/marketplace/marketplaceToken";
+import type { MarketplaceSessionToken } from "@worldwideview/wwv-plugin-sdk";
 import { grantTokenLimiter } from "@/lib/rateLimiters";
 import { getClientIp } from "@/lib/rateLimit";
 import { isPluginInstallEnabled, isDemo, isDemoAdmin } from "@/core/edition";
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Invalid or missing redirectTo" }, { status: 400 });
         }
 
-        const token = await issueMarketplaceToken(session.user.id ?? "");
+        const token: MarketplaceSessionToken = await issueMarketplaceToken(session.user.id ?? "");
         const dest = new URL(redirectTo);
         // Token in fragment — never sent to server in logs/referer
         return NextResponse.redirect(`${dest.toString()}#token=${token}`);

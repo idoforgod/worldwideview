@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { safeFetch, validateOrigin, isPrivateIP } from "./ssrf";
 
 describe("SSRF Protection Utility", () => {
@@ -34,8 +34,42 @@ describe("SSRF Protection Utility", () => {
         });
     });
 
+    describe("checkHostAllowlist via safeFetch", () => {
+        const originalAllowlist = process.env.PROXY_HOST_ALLOWLIST;
+
+        afterEach(() => {
+            if (originalAllowlist === undefined) {
+                delete process.env.PROXY_HOST_ALLOWLIST;
+            } else {
+                process.env.PROXY_HOST_ALLOWLIST = originalAllowlist;
+            }
+        });
+
+        it("denies all when PROXY_HOST_ALLOWLIST is unset", async () => {
+            delete process.env.PROXY_HOST_ALLOWLIST;
+            await expect(safeFetch("https://camera.example.com/feed")).rejects.toThrow(/SSRF.*PROXY_HOST_ALLOWLIST/);
+        });
+
+        it("denies all when PROXY_HOST_ALLOWLIST is empty string", async () => {
+            process.env.PROXY_HOST_ALLOWLIST = "";
+            await expect(safeFetch("https://camera.example.com/feed")).rejects.toThrow(/SSRF.*PROXY_HOST_ALLOWLIST/);
+        });
+
+        it("rejects a host not in the concrete allowlist", async () => {
+            process.env.PROXY_HOST_ALLOWLIST = "allowed.example.com";
+            await expect(safeFetch("https://blocked.example.com/feed")).rejects.toThrow(/not in PROXY_HOST_ALLOWLIST/);
+        });
+
+        it("passes the allowlist check for '*' but still rejects private IPs", async () => {
+            process.env.PROXY_HOST_ALLOWLIST = "*";
+            // Private IP clears the allowlist but the post-DNS private-IP check still fires
+            await expect(safeFetch("https://127.0.0.1/data")).rejects.toThrow(/SSRF/);
+        });
+    });
+
     describe("safeFetch", () => {
         it("should reject private IPs immediately", async () => {
+            process.env.PROXY_HOST_ALLOWLIST = "*"; // bypass allowlist for these tests
             await expect(safeFetch("https://127.0.0.1/data")).rejects.toThrow(/SSRF/);
             await expect(safeFetch("https://169.254.169.254/latest/meta-data")).rejects.toThrow(/SSRF/);
         });

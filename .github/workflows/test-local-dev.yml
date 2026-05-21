@@ -13,6 +13,7 @@ jobs:
     env:
       NEXT_PUBLIC_WWV_EDITION: local
       AUTH_SECRET: ci-placeholder-secret-not-used-in-tests
+      ENCRYPTION_MASTER_KEY: ci-placeholder-key-not-used-in-tests
     steps:
       - uses: actions/checkout@v6
       
@@ -31,7 +32,10 @@ jobs:
         run: pnpm install --frozen-lockfile
         
       - name: Setup environment
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^ENCRYPTION_MASTER_KEY=.*/ENCRYPTION_MASTER_KEY=ci-placeholder-key-not-used-in-tests/' .env
+          sed -i 's/^AUTH_SECRET=.*/AUTH_SECRET=ci-placeholder-secret-not-used-in-tests/' .env
         
       - name: Test predev setup
         # Tests that Docker DB boots, port mappings work, Prisma pushes schema, and plugins sync

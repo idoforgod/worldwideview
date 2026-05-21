@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { randomUUID } from "crypto";
+import type { MarketplaceSessionToken } from "@worldwideview/wwv-plugin-sdk";
 
 const SCOPE = "marketplace";
 const ISSUER = "worldwideview";
@@ -17,10 +18,11 @@ function getSecret(): Uint8Array {
 }
 
 /**
- * Issue a JWT scoped to marketplace API access, bound to a specific user.
+ * Issue a marketplace session JWT scoped to API access, bound to a specific user.
  * Signed with AUTH_SECRET — no database required.
+ * Returns a branded MarketplaceSessionToken to prevent accidental use as a WebSocket credential.
  */
-export async function issueMarketplaceToken(userId: string): Promise<string> {
+export async function issueMarketplaceToken(userId: string): Promise<MarketplaceSessionToken> {
     return new SignJWT({ scope: SCOPE })
         .setProtectedHeader({ alg: "HS256" })
         .setSubject(userId)
@@ -29,7 +31,7 @@ export async function issueMarketplaceToken(userId: string): Promise<string> {
         .setJti(randomUUID())
         .setIssuedAt()
         .setExpirationTime(EXPIRY)
-        .sign(getSecret());
+        .sign(getSecret()) as Promise<MarketplaceSessionToken>;
 }
 
 export interface MarketplaceTokenPayload {

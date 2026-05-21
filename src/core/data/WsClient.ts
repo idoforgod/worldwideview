@@ -2,6 +2,16 @@ import type { WsStreamPayload, GeoEntity } from "@worldwideview/wwv-plugin-sdk";
 import { dataBus } from "./DataBus";
 import { pluginManager } from "../plugins/PluginManager";
 import { useStore } from "../state/store";
+import { ticketAuthEnabledForPlugin } from "../edition";
+import type { PluginTicket } from "@worldwideview/wwv-plugin-sdk";
+
+async function fetchPluginTicket(pluginId: string): Promise<PluginTicket> {
+  const res = await fetch(`/api/auth/ticket?pluginId=${encodeURIComponent(pluginId)}`);
+  if (!res.ok) throw new Error(`[WSClient] Ticket fetch failed (${res.status}) for ${pluginId}`);
+  const data = await res.json() as { token?: string };
+  if (!data.token) throw new Error(`[WSClient] Ticket response missing token for ${pluginId}`);
+  return data.token as PluginTicket;
+}
 
 interface EngineConnection {
   ws: WebSocket | null;
@@ -13,6 +23,10 @@ interface EngineConnection {
   reconnectAttempts: number;
   /** Timer that resets the backoff counter once a connection has been stable */
   stableConnectionTimer: NodeJS.Timeout | null;
+  /** True while waiting for the server's welcome after sending an auth message */
+  awaitingWelcome: boolean;
+  /** Closes the connection if the server doesn't send welcome within 3s */
+  authTimeoutTimer: NodeJS.Timeout | null;
 }
 
 const RECONNECT_BASE_MS = 5000;
@@ -39,6 +53,8 @@ class WebSocketClient {
         cleanupTimer: null,
         reconnectAttempts: 0,
         stableConnectionTimer: null,
+        awaitingWelcome: false,
+        authTimeoutTimer: null,
       };
       this.engines.set(engineUrl, engine);
     }
@@ -63,9 +79,31 @@ class WebSocketClient {
       engine.stableConnectionTimer = setTimeout(() => {
         engine.reconnectAttempts = 0;
       }, STABLE_CONNECTION_MS);
-      // Resubscribe to all active plugins on this engine
-      for (const pluginId of engine.subscriptions) {
-        this.send(engine, { action: "subscribe", pluginId });
+
+      // Check whether any subscription on this engine requires ticket auth.
+      const ticketPlugin = [...engine.subscriptions].find((id) => ticketAuthEnabledForPlugin(id));
+      if (ticketPlugin) {
+        engine.awaitingWelcome = true;
+        fetchPluginTicket(ticketPlugin)
+          .then((ticket) => {
+            this.send(engine, { type: "auth", v: 1, token: ticket });
+            // 3s timeout — if the server doesn't send welcome, close and trigger reconnect.
+            engine.authTimeoutTimer = setTimeout(() => {
+              if (engine.awaitingWelcome) {
+                console.warn(`[WSClient] Auth timeout waiting for welcome from ${engineUrl}. Closing to reconnect.`);
+                engine.ws?.close();
+              }
+            }, 3000);
+          })
+          .catch((err: unknown) => {
+            console.error(`[WSClient] Failed to get ticket for ${ticketPlugin}:`, err instanceof Error ? err.message : err);
+            engine.ws?.close();
+          });
+      } else {
+        // No ticket auth required — subscribe immediately.
+        for (const pluginId of engine.subscriptions) {
+          this.send(engine, { action: "subscribe", pluginId });
+        }
       }
     };
 
@@ -75,9 +113,15 @@ class WebSocketClient {
         console.debug(`[WSClient] 📥 Received raw message at +${(msgTime - wsStart).toFixed(2)}ms from start:`, event.data.substring(0, 150) + (event.data.length > 150 ? '...' : ''));
         const data = JSON.parse(event.data);
 
-        // Handle welcome message (informational, no action needed)
         if (data.type === "welcome") {
           console.debug(`[WSClient] 👋 Engine ${engineUrl} serves: ${data.plugins?.join(", ")}`);
+          if (engine.awaitingWelcome) {
+            engine.awaitingWelcome = false;
+            if (engine.authTimeoutTimer) { clearTimeout(engine.authTimeoutTimer); engine.authTimeoutTimer = null; }
+            for (const pluginId of engine.subscriptions) {
+              this.send(engine, { action: "subscribe", pluginId });
+            }
+          }
           return;
         }
 
@@ -95,6 +139,8 @@ class WebSocketClient {
 
     engine.ws.onclose = () => {
       engine.ws = null;
+      engine.awaitingWelcome = false;
+      if (engine.authTimeoutTimer) { clearTimeout(engine.authTimeoutTimer); engine.authTimeoutTimer = null; }
       if (engine.stableConnectionTimer) {
         clearTimeout(engine.stableConnectionTimer);
         engine.stableConnectionTimer = null;
@@ -178,6 +224,7 @@ class WebSocketClient {
           console.log(`[WSClient] No subscriptions remain for ${engineUrl}. Closing connection.`);
           if (engine.reconnectTimer) clearTimeout(engine.reconnectTimer);
           if (engine.stableConnectionTimer) clearTimeout(engine.stableConnectionTimer);
+          if (engine.authTimeoutTimer) { clearTimeout(engine.authTimeoutTimer); engine.authTimeoutTimer = null; }
           engine.ws?.close();
           this.engines.delete(engineUrl);
         }

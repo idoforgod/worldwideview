@@ -5,8 +5,11 @@ const ITERATIONS = 100000;
 const KEY_LENGTH = 32;
 const DIGEST = "sha256";
 
-// In production, this should be set in the environment
-const MASTER_KEY = process.env.ENCRYPTION_MASTER_KEY || "00000000000000000000000000000000";
+function getMasterKey(): string {
+    const key = process.env.ENCRYPTION_MASTER_KEY;
+    if (!key) throw new Error('[encryption] ENCRYPTION_MASTER_KEY env var is required');
+    return key;
+}
 
 export interface EncryptedCredential {
     version: string;
@@ -18,7 +21,7 @@ export interface EncryptedCredential {
 export async function encryptCredential(plainText: string): Promise<EncryptedCredential> {
     return new Promise((resolve, reject) => {
         const salt = crypto.randomBytes(16);
-        crypto.pbkdf2(MASTER_KEY, salt, ITERATIONS, KEY_LENGTH, DIGEST, (err, key) => {
+        crypto.pbkdf2(getMasterKey(), salt, ITERATIONS, KEY_LENGTH, DIGEST, (err, key) => {
             if (err) return reject(err);
 
             const nonce = crypto.randomBytes(12);
@@ -54,7 +57,7 @@ export async function decryptCredential(cred: EncryptedCredential): Promise<stri
         const ciphertext = payloadParts[0];
         const authTag = Buffer.from(payloadParts[1], "base64");
 
-        crypto.pbkdf2(MASTER_KEY, salt, ITERATIONS, KEY_LENGTH, DIGEST, (err, key) => {
+        crypto.pbkdf2(getMasterKey(), salt, ITERATIONS, KEY_LENGTH, DIGEST, (err, key) => {
             if (err) return reject(err);
 
             try {

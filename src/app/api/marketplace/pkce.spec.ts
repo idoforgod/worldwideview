@@ -6,6 +6,7 @@ import { GET as connectRoute } from "./connect/route";
 import { GET as callbackRoute } from "./callback/route";
 
 vi.mock("openid-client", () => ({
+    Configuration: vi.fn().mockImplementation(function(this: object) { return this; }),
     randomState: vi.fn(() => "mock-state"),
     randomPKCECodeVerifier: vi.fn(() => "mock-verifier"),
     calculatePKCECodeChallenge: vi.fn(() => "mock-challenge"),

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { upsertPlugin } from "@/lib/marketplace/repository";
 import { issueMarketplaceToken } from "@/lib/marketplace/marketplaceToken";
+import type { MarketplaceSessionToken } from "@worldwideview/wwv-plugin-sdk";
 import type { PluginManifest } from "@/core/plugins/PluginManifest";
 import { validateManifest } from "@/core/plugins/validateManifest";
 import { installLimiter } from "@/lib/rateLimiters";
@@ -113,7 +114,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Install failed" }, { status: 500 });
         }
 
-        const token = await issueMarketplaceToken(session.user.id ?? "");
+        const token: MarketplaceSessionToken = await issueMarketplaceToken(session.user.id ?? "");
         const successUrl = new URL(redirectTo);
 
         // Unverified plugins need user confirmation on the WWV client side

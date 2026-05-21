@@ -1,10 +1,11 @@
  
 import { describe, it, expectTypeOf } from "vitest";
-import type { 
-    TokenExchangeRequest, 
-    TokenExchangeResponse, 
+import type {
+    TokenExchangeRequest,
+    TokenExchangeResponse,
     WebSocketAuthMessage,
     SensitiveString,
+    PluginTicket,
     Tier,
     PKCEConnectRequest,
     PKCETokenExchange,
@@ -40,7 +41,7 @@ describe("Auth Contracts", () => {
     it("WebSocketAuthMessage has exact required properties including protocol version", () => {
         expectTypeOf<WebSocketAuthMessage>().toHaveProperty("type").toEqualTypeOf<"auth">();
         expectTypeOf<WebSocketAuthMessage>().toHaveProperty("v").toEqualTypeOf<1>();
-        expectTypeOf<WebSocketAuthMessage>().toHaveProperty("token").toEqualTypeOf<SensitiveString>();
+        expectTypeOf<WebSocketAuthMessage>().toHaveProperty("token").toEqualTypeOf<PluginTicket>();
 
         // @ts-expect-error - missing version
         const _badMsg: WebSocketAuthMessage = { type: "auth", token: "jwt-token-here" as SensitiveString };

@@ -21,16 +21,18 @@ export async function GET(req: NextRequest) {
 
     const marketplaceUrl = process.env.NEXT_PUBLIC_WWV_MARKETPLACE_URL || "https://app.worldwideview.dev";
     const issuer = new URL(marketplaceUrl);
-    const server = {
-        issuer: issuer.toString(),
-        authorization_endpoint: new URL("/oauth/authorize", issuer).toString(),
-        token_endpoint: new URL("/api/tickets/exchange", issuer).toString(),
-    };
-    const config = { server, clientId: "local-app" };
-    
+    const config = new client.Configuration(
+        {
+            issuer: issuer.toString(),
+            authorization_endpoint: new URL("/oauth/authorize", issuer).toString(),
+            token_endpoint: new URL("/api/oauth/token", issuer).toString(),
+        },
+        "local-app",
+    );
+
     try {
         const tokens = await client.authorizationCodeGrant(
-            config as any,
+            config,
             new URL(req.url),
             { expectedState: stateCookie, pkceCodeVerifier: verifierCookie }
         );
@@ -54,8 +56,8 @@ export async function GET(req: NextRequest) {
                 }
             });
         }
-    } catch (err: any) {
-        console.error("[PKCE] Exchange failed:", err.message);
+    } catch (err) {
+        console.error("[PKCE] Exchange failed:", err instanceof Error ? err.message : String(err));
         return NextResponse.json({ error: "Failed to exchange authorization code" }, { status: 500 });
     }
 

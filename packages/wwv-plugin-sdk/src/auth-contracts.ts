@@ -8,6 +8,12 @@
  */
 export type SensitiveString = string & { readonly __brand: "SensitiveString" };
 
+/** Marketplace session JWT issued after PKCE; scoped to this Local App only. */
+export type MarketplaceSessionToken = string & { readonly __brand: "marketplace-session" };
+
+/** Short-lived, audience-bound JWT obtained from token exchange; used for WebSocket auth. */
+export type PluginTicket = string & { readonly __brand: "plugin-ticket" };
+
 /**
  * Factory function to safely cast a string to a SensitiveString.
  * This provides a single grep target for every place a secret enters the system.
@@ -66,7 +72,7 @@ export interface WebSocketAuthMessage {
     /** Protocol version to allow future wire shape evolution */
     v: 1;
     /** The short-lived JWT obtained from the Token Exchange */
-    token: SensitiveString;
+    token: PluginTicket;
 }
 
 /**

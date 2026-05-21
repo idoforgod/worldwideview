@@ -99,6 +99,22 @@ export function getDemoAdminSecret(): string | undefined {
 /** Demo admin session role constant. */
 export const DEMO_ADMIN_ROLE = "demo-admin";
 
+// ---------------------------------------------------------------------------
+// Per-plugin ticket auth flag (ADR-001)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the given plugin requires WebSocket first-message auth
+ * (i.e., must send a PluginTicket before any subscribe message).
+ *
+ * Controlled by NEXT_PUBLIC_WWV_TICKET_AUTH_PLUGINS (comma-separated plugin IDs).
+ * Empty or unset → ticket auth is disabled for all plugins (dormant / safe default).
+ */
+export function ticketAuthEnabledForPlugin(pluginId: string): boolean {
+    const list = process.env.NEXT_PUBLIC_WWV_TICKET_AUTH_PLUGINS ?? "";
+    return list.split(",").map((s) => s.trim()).filter(Boolean).includes(pluginId);
+}
+
 /**
  * Returns `true` when the session belongs to the demo admin user.
  * Accepts any session-like object (uses runtime narrowing to avoid

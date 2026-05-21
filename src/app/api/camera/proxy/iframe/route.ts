@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { isAuthEnabled } from "@/core/edition";
 import { cameraProxyLimiter } from "@/lib/rateLimiters";
 import { getClientIp } from "@/lib/rateLimit";
+import { safeFetch } from "@/lib/security/ssrf";
 
 const MAX_IFRAME_DURATION_MS = 10 * 1000; // 10 seconds timeout for HTML
 
@@ -28,13 +29,14 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const upstream = await fetch(targetUrl, {
+        const upstream = await safeFetch(targetUrl, {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.5",
             },
-            signal: AbortSignal.timeout(MAX_IFRAME_DURATION_MS),
+            maxSize: 5 * 1024 * 1024,
+            timeout: MAX_IFRAME_DURATION_MS,
         });
 
         if (!upstream.ok) {
